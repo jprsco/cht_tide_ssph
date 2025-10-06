@@ -47,10 +47,10 @@ def predict(data, times, format="np"):
                     phases.append(data.loc[name, 2])
                 okay = True
                 continue
-        if not okay:
-            print(
-                f"Constituent {name} not found in list of NOAA constituents ! Skipping ..."
-            )
+        # if not okay:
+        #     print(
+        #         f"Constituent {name} not found in list of NOAA constituents ! Skipping ..."
+        #     )
 
     td = Tide(
         constituents=constituents,
