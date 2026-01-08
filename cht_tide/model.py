@@ -144,3 +144,26 @@ class TideModel:
                 df.set_index("constituent")
                 lst.append(df)
             return lst
+
+    def add_offset(self, data, offset=0):
+
+        def _add_or_update(df):
+            if 'A0' in df.index:
+                df.loc['A0', "amplitude"] += offset
+            else:
+                new_row = pd.DataFrame({
+                    "amplitude": [offset],
+                    "phase": [0]
+                }, index=['A0'])
+                df = pd.concat([df, new_row])
+            return df
+
+        if isinstance(data, gpd.GeoDataFrame):
+            for i in data.index:
+                if isinstance(data.at[i, "astro"], pd.DataFrame):
+                    data.at[i, "astro"] = _add_or_update(data.at[i, "astro"])
+            return data
+
+        elif isinstance(data, list):
+            # List of DataFrames (format="dataframe")
+            return [_add_or_update(df) for df in data]
