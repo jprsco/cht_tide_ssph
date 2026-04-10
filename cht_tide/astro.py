@@ -1,27 +1,14 @@
-#   Copyright notice
-#   --------------------------------------------------------------------
-#   Copyright (C) 2020 Deltares
-#       Freek Scheel
-#
-#       freek.scheel@deltares.nl
-#
-#       P.O. Box 177
-#       2600 MH Delft
-#       The Netherlands
-#
-#   This library is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This library is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this library.  If not, see <http://www.gnu.org/licenses/>.
-#   --------------------------------------------------------------------
+"""Astronomical parameter calculations for tidal harmonic analysis.
+
+Computes Julian Day, Julian Century, and all planetary/lunar orbital
+parameters required for tidal equilibrium arguments and node factors.
+Based largely on Meeus's *Astronomical Algorithms* (2nd ed.) and
+Schureman's *Manual of Harmonic Analysis*.
+"""
+
+# Copyright (C) 2020 Deltares — Freek Scheel <freek.scheel@deltares.nl>
+# GNU Lesser General Public License v3 or later.
+
 from collections import namedtuple
 
 import numpy as np
@@ -35,8 +22,27 @@ d2r, r2d = np.pi / 180.0, 180.0 / np.pi
 # analysis.
 
 
-# Convert a sexagesimal angle into decimal degrees
-def s2d(degrees, arcmins=0, arcsecs=0, mas=0, muas=0):
+def s2d(degrees: float, arcmins: float = 0, arcsecs: float = 0, mas: float = 0, muas: float = 0) -> float:
+    """Convert a sexagesimal angle to decimal degrees.
+
+    Parameters
+    ----------
+    degrees : float
+        Whole degrees.
+    arcmins : float, optional
+        Arc-minutes component.
+    arcsecs : float, optional
+        Arc-seconds component.
+    mas : float, optional
+        Milli-arc-seconds component.
+    muas : float, optional
+        Micro-arc-seconds component.
+
+    Returns
+    -------
+    float
+        Angle in decimal degrees.
+    """
     return (
         degrees
         + (arcmins / 60.0)
@@ -46,23 +52,71 @@ def s2d(degrees, arcmins=0, arcsecs=0, mas=0, muas=0):
     )
 
 
-# Evaluate a polynomial at argument
-def polynomial(coefficients, argument):
+def polynomial(coefficients: tuple, argument: float) -> float:
+    """Evaluate a polynomial at a given argument.
+
+    Parameters
+    ----------
+    coefficients : tuple
+        Polynomial coefficients in ascending order (constant first).
+    argument : float
+        Value at which to evaluate the polynomial.
+
+    Returns
+    -------
+    float
+        Polynomial value.
+    """
     return sum([c * (argument**i) for i, c in enumerate(coefficients)])
 
 
-# Evaluate the first derivative of a polynomial at argument
-def d_polynomial(coefficients, argument):
+def d_polynomial(coefficients: tuple, argument: float) -> float:
+    """Evaluate the first derivative of a polynomial at a given argument.
+
+    Parameters
+    ----------
+    coefficients : tuple
+        Polynomial coefficients in ascending order (constant first).
+    argument : float
+        Value at which to evaluate the derivative.
+
+    Returns
+    -------
+    float
+        Derivative value.
+    """
     return sum([c * i * (argument ** (i - 1)) for i, c in enumerate(coefficients)])
 
 
-# Meeus formula 11.1
-def T(t):
+def T(t) -> float:
+    """Return Julian Centuries since J2000.0 for a given datetime (Meeus 11.1).
+
+    Parameters
+    ----------
+    t : datetime
+        UTC datetime.
+
+    Returns
+    -------
+    float
+        Julian centuries since J2000.0.
+    """
     return (JD(t) - 2451545.0) / 36525
 
 
-# Meeus formula 7.1
-def JD(t):
+def JD(t) -> float:
+    """Compute the Julian Day number for a given datetime (Meeus 7.1).
+
+    Parameters
+    ----------
+    t : datetime
+        UTC datetime.
+
+    Returns
+    -------
+    float
+        Julian Day number.
+    """
     Y, M = t.year, t.month
     D = (
         t.day
@@ -143,13 +197,45 @@ lunar_perigee_coefficients = (
 
 # Now follow some useful auxiliary values, we won't need their speed.
 # See notes on Table 6 in Schureman for I, nu, xi, nu', 2nu''
-def _I(N, i, omega):
+def _I(N: float, i: float, omega: float) -> float:
+    """Compute Schureman's lunar inclination I (Table 6).
+
+    Parameters
+    ----------
+    N : float
+        Lunar node longitude in degrees.
+    i : float
+        Lunar inclination in degrees.
+    omega : float
+        Terrestrial obliquity in degrees.
+
+    Returns
+    -------
+    float
+        I in degrees.
+    """
     N, i, omega = d2r * N, d2r * i, d2r * omega
     cosI = np.cos(i) * np.cos(omega) - np.sin(i) * np.sin(omega) * np.cos(N)
     return r2d * np.arccos(cosI)
 
 
-def _xi(N, i, omega):
+def _xi(N: float, i: float, omega: float) -> float:
+    """Compute Schureman's auxiliary angle xi (Table 6).
+
+    Parameters
+    ----------
+    N : float
+        Lunar node longitude in degrees.
+    i : float
+        Lunar inclination in degrees.
+    omega : float
+        Terrestrial obliquity in degrees.
+
+    Returns
+    -------
+    float
+        xi in degrees.
+    """
     N, i, omega = d2r * N, d2r * i, d2r * omega
     e1 = np.cos(0.5 * (omega - i)) / np.cos(0.5 * (omega + i)) * np.tan(0.5 * N)
     e2 = np.sin(0.5 * (omega - i)) / np.sin(0.5 * (omega + i)) * np.tan(0.5 * N)
@@ -158,7 +244,23 @@ def _xi(N, i, omega):
     return -(e1 + e2) * r2d
 
 
-def _nu(N, i, omega):
+def _nu(N: float, i: float, omega: float) -> float:
+    """Compute Schureman's auxiliary angle nu (Table 6).
+
+    Parameters
+    ----------
+    N : float
+        Lunar node longitude in degrees.
+    i : float
+        Lunar inclination in degrees.
+    omega : float
+        Terrestrial obliquity in degrees.
+
+    Returns
+    -------
+    float
+        nu in degrees.
+    """
     N, i, omega = d2r * N, d2r * i, d2r * omega
     e1 = np.cos(0.5 * (omega - i)) / np.cos(0.5 * (omega + i)) * np.tan(0.5 * N)
     e2 = np.sin(0.5 * (omega - i)) / np.sin(0.5 * (omega + i)) * np.tan(0.5 * N)
@@ -167,9 +269,23 @@ def _nu(N, i, omega):
     return (e1 - e2) * r2d
 
 
-# Schureman equation 224
-# Can we be more precise than B "the solar coefficient" = 0.1681?
-def _nup(N, i, omega):
+def _nup(N: float, i: float, omega: float) -> float:
+    """Compute Schureman's nu' (equation 224).
+
+    Parameters
+    ----------
+    N : float
+        Lunar node longitude in degrees.
+    i : float
+        Lunar inclination in degrees.
+    omega : float
+        Terrestrial obliquity in degrees.
+
+    Returns
+    -------
+    float
+        nu' in degrees.
+    """
     I = d2r * _I(N, i, omega)
     nu = d2r * _nu(N, i, omega)
     return r2d * np.arctan(
@@ -177,8 +293,23 @@ def _nup(N, i, omega):
     )
 
 
-# Schureman equation 232
-def _nupp(N, i, omega):
+def _nupp(N: float, i: float, omega: float) -> float:
+    """Compute Schureman's 2nu'' (equation 232).
+
+    Parameters
+    ----------
+    N : float
+        Lunar node longitude in degrees.
+    i : float
+        Lunar inclination in degrees.
+    omega : float
+        Terrestrial obliquity in degrees.
+
+    Returns
+    -------
+    float
+        2nu'' in degrees.
+    """
     I = d2r * _I(N, i, omega)
     nu = d2r * _nu(N, i, omega)
     tan2nupp = (np.sin(I) ** 2 * np.sin(2 * nu)) / (
@@ -190,7 +321,21 @@ def _nupp(N, i, omega):
 AstronomicalParameter = namedtuple("AstronomicalParameter", ["value", "speed"])
 
 
-def astro(t):
+def astro(t) -> dict:
+    """Compute all astronomical parameters needed for tidal analysis at time *t*.
+
+    Parameters
+    ----------
+    t : datetime
+        UTC time at which to evaluate the parameters.
+
+    Returns
+    -------
+    dict
+        Mapping of parameter name to :class:`AstronomicalParameter` namedtuple
+        (``value`` in degrees, ``speed`` in degrees/hour or ``None`` for
+        parameters whose speed is not required).
+    """
     a = {}
     # We can use polynomial fits from Meeus to obtain good approximations to
     # some astronomical values (and therefore speeds).
@@ -227,7 +372,7 @@ def astro(t):
         a[name] = AstronomicalParameter(np.mod(function(*args), 360.0), None)
 
     # We don't work directly with the T (hours) parameter, instead our spanning
-    # set for equilibrium arguments #is given by T+h-s, s, h, p, N, pp, 90.
+    # set for equilibrium arguments is given by T+h-s, s, h, p, N, pp, 90.
     # This is in line with convention.
     hour = AstronomicalParameter((JD(t) - np.floor(JD(t))) * 360.0, 15.0)
     a["T+h-s"] = AstronomicalParameter(

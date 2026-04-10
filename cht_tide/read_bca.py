@@ -1,21 +1,46 @@
+"""Readers for SFINCS boundary condition files (.bnd and .bca).
+
+Provides :class:`SfincsBoundary` to read SFINCS flow boundary point
+locations and their tidal (astro) boundary conditions, plus helper
+classes for parsing INI-style ``.bca`` files.
+"""
+
 import os
 
 import pandas as pd
 
 
 class SfincsBoundary:
-    def __init__(self):
+    """Container for SFINCS boundary points and their tidal conditions.
+
+    Attributes
+    ----------
+    flow_boundary_points : list of FlowBoundaryPoint
+        Ordered list of boundary points read from the ``.bnd`` file.
+    """
+
+    def __init__(self) -> None:
         self.flow_boundary_points = []
 
-    def read_flow_boundary_points(self, bnd_file: None):
-        # Read SFINCS bnd file
+    def read_flow_boundary_points(self, bnd_file: str) -> "SfincsBoundary":
+        """Read boundary point locations from a SFINCS ``.bnd`` file.
+
+        Parameters
+        ----------
+        bnd_file : str
+            Path to the SFINCS boundary file (whitespace-delimited x/y
+            columns, no header).
+
+        Returns
+        -------
+        SfincsBoundary
+            The instance (for method chaining).
+        """
         if not bnd_file:
             return
-
         if not os.path.exists(bnd_file):
             return
 
-        # Read the bnd file
         df = pd.read_csv(
             bnd_file,
             index_col=False,
@@ -24,7 +49,6 @@ class SfincsBoundary:
             names=["x", "y"],
         )
 
-        # Loop through points
         for ind in range(len(df.x.to_numpy())):
             name = str(ind + 1).zfill(4)
             point = FlowBoundaryPoint(
@@ -34,10 +58,21 @@ class SfincsBoundary:
 
         return self
 
-    def read_astro_boundary_conditions(self, bca_file):
+    def read_astro_boundary_conditions(self, bca_file: str) -> "SfincsBoundary":
+        """Read tidal harmonic constituents from a SFINCS ``.bca`` file.
+
+        Parameters
+        ----------
+        bca_file : str
+            Path to the SFINCS astronomical boundary conditions file.
+
+        Returns
+        -------
+        SfincsBoundary
+            The instance (for method chaining).
+        """
         if not bca_file:
             return
-
         if not os.path.exists(bca_file):
             return
 
@@ -48,9 +83,22 @@ class SfincsBoundary:
         return self
 
 
-# Classes for information about boundary points
 class Point:
-    def __init__(self, x, y, name=None, crs=None):
+    """Simple geographic point.
+
+    Parameters
+    ----------
+    x : float
+        X coordinate.
+    y : float
+        Y coordinate.
+    name : str, optional
+        Label for the point.
+    crs : any, optional
+        Coordinate reference system.
+    """
+
+    def __init__(self, x: float, y: float, name: str = None, crs=None) -> None:
         self.x = x
         self.y = y
         self.crs = crs
@@ -59,58 +107,136 @@ class Point:
 
 
 class FlowBoundaryPoint:
-    def __init__(self, x, y, name=None, crs=None, data=None, astro=None):
+    """A single SFINCS flow boundary point with optional tidal data.
+
+    Parameters
+    ----------
+    x : float
+        X coordinate.
+    y : float
+        Y coordinate.
+    name : str, optional
+        Boundary point label.
+    crs : any, optional
+        Coordinate reference system.
+    data : any, optional
+        Time-series boundary data.
+    astro : pd.DataFrame or None, optional
+        Tidal harmonic data for this point.
+    """
+
+    def __init__(
+        self,
+        x: float,
+        y: float,
+        name: str = None,
+        crs=None,
+        data=None,
+        astro=None,
+    ) -> None:
         self.name = name
         self.geometry = Point(x, y, crs=crs)
         self.data = data
         self.astro = astro
 
 
-# Classes to read bca file
 class Section:
-    def __init__(self, name=None, keyword=[], data=None):
+    """One section of an INI-style file.
+
+    Attributes
+    ----------
+    name : str or None
+        Section header name.
+    keyword : list of Keyword
+        Key/value pairs found in this section.
+    data : pd.DataFrame or None
+        Tabular data rows found in this section.
+    """
+
+    def __init__(self, name: str = None, keyword: list = [], data=None) -> None:
         self.name = None
         self.keyword = []
         self.data = None
 
-    def get_value(self, keyword):
+    def get_value(self, keyword: str):
+        """Return the value for a keyword (case-insensitive).
+
+        Parameters
+        ----------
+        keyword : str
+            Name of the keyword to look up.
+
+        Returns
+        -------
+        str or None
+            The value string, or ``None`` if the keyword is not present.
+        """
         for kw in self.keyword:
             if kw.name.lower() == keyword.lower():
                 return kw.value
 
 
 class Keyword:
-    def __init__(self, name=None, value=None, comment=None):
+    """A single key/value pair from an INI-style file.
+
+    Parameters
+    ----------
+    name : str, optional
+        Keyword name.
+    value : str, optional
+        Keyword value.
+    comment : str, optional
+        Inline comment text.
+    """
+
+    def __init__(self, name: str = None, value: str = None, comment: str = None) -> None:
         self.name = name
         self.value = value
         self.comment = comment
 
 
 class IniStruct:
-    def __init__(self, filename=None):
+    """Parser for INI-style files used by SFINCS (``.bca``, etc.).
+
+    Parameters
+    ----------
+    filename : str, optional
+        Path to the file to parse immediately on construction.
+
+    Attributes
+    ----------
+    section : list of Section
+        Parsed sections in document order.
+    """
+
+    def __init__(self, filename: str = None) -> None:
         self.section = []
 
         if filename:
             self.read(filename)
 
-    def read(self, filename):
+    def read(self, filename: str) -> None:
+        """Parse an INI-style file into sections, keywords, and data rows.
+
+        Parameters
+        ----------
+        filename : str
+            Path to the INI file to read.
+        """
         import re
 
         self.section = []
         istart = []
 
-        fid = open(filename, "r")
-        lines = fid.readlines()
-        fid.close()
+        with open(filename, "r") as fid:
+            lines = fid.readlines()
 
         # First go through lines and find start of sections
-
         for i, line in enumerate(lines):
             ll = line.strip()
             if len(ll) == 0:
                 continue
             if ll[0] == "[" and ll[-1] == "]":
-                # new section
                 section_name = ll[1:-1]
                 sec = Section()
                 sec.name = section_name
@@ -127,7 +253,6 @@ class IniStruct:
 
             df = pd.DataFrame()
 
-            # First keyword/value pairs
             for iline in range(i1, i2):
                 ll = lines[iline].strip()
 
@@ -135,19 +260,15 @@ class IniStruct:
                     continue
 
                 if ll[0] == "#":
-                    # comment line
                     continue
 
                 if "=" in ll:
-                    # Must be key/val pair
                     key = Keyword()
 
-                    # First find comment
+                    # Handle embedded # comment characters
                     if "#" in ll:
                         ipos = [(i.start()) for i in re.finditer("#", ll)]
                         if len(ipos) > 1:
-                            # data in between first to #
-                            # remove first two #
                             ll = (
                                 ll[0 : ipos[0]]
                                 + ll[ipos[0] + 1 : ipos[1]]
@@ -159,7 +280,6 @@ class IniStruct:
                         key.comment = ll[j + 1 :].strip()
                         ll = ll[0:j].strip()
 
-                    # Now keyword and value
                     tx = ll.split("=")
                     key.name = tx[0].strip()
                     key.value = tx[1].strip()
@@ -167,13 +287,12 @@ class IniStruct:
                     self.section[isec].keyword.append(key)
 
                 else:
-                    # And now for the data
                     a_list = ll.split()
                     list_of_floats = []
                     for item in a_list:
                         try:
                             list_of_floats.append(float(item))
-                        except Exception:  # noqa: E722
+                        except Exception:
                             list_of_floats.append(item)
                     a_series = pd.Series(list_of_floats)
                     df = pd.concat([df, a_series], axis=1)

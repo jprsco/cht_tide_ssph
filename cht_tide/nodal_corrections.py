@@ -1,27 +1,15 @@
-#   Copyright notice
-#   --------------------------------------------------------------------
-#   Copyright (C) 2020 Deltares
-#       Freek Scheel
-#
-#       freek.scheel@deltares.nl
-#
-#       P.O. Box 177
-#       2600 MH Delft
-#       The Netherlands
-#
-#   This library is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This library is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this library.  If not, see <http://www.gnu.org/licenses/>.
-#   --------------------------------------------------------------------
+"""Nodal correction functions for tidal harmonic analysis.
+
+Provides the amplitude node factors *f* and phase corrections *u* (in
+degrees) for each supported tidal constituent, following Schureman's
+*Manual of Harmonic Analysis and Prediction of Tides* (1958).
+
+All public functions accept a dict of :class:`~cht_tide.astro.AstronomicalParameter`
+objects (as returned by :func:`~cht_tide.astro.astro`) and return a scalar.
+"""
+
+# Copyright (C) 2020 Deltares — Freek Scheel <freek.scheel@deltares.nl>
+# GNU Lesser General Public License v3 or later.
 
 import numpy as np
 
@@ -31,12 +19,35 @@ d2r, r2d = np.pi / 180.0, 180.0 / np.pi
 # and return dimensionless scale factors for constituent amplitudes.
 
 
-def f_unity(a):
+def f_unity(a: dict) -> float:
+    """Node factor equal to unity (no modulation).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters (unused).
+
+    Returns
+    -------
+    float
+        Always ``1.0``.
+    """
     return 1.0
 
 
-# Schureman equations 73, 65
-def f_Mm(a):
+def f_Mm(a: dict) -> float:
+    """Amplitude node factor for Mm (Schureman equations 73, 65).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -44,8 +55,19 @@ def f_Mm(a):
     return (2 / 3.0 - np.sin(I) ** 2) / mean
 
 
-# Schureman equations 74, 66
-def f_Mf(a):
+def f_Mf(a: dict) -> float:
+    """Amplitude node factor for Mf (Schureman equations 74, 66).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -53,8 +75,19 @@ def f_Mf(a):
     return np.sin(I) ** 2 / mean
 
 
-# Schureman equations 75, 67
-def f_O1(a):
+def f_O1(a: dict) -> float:
+    """Amplitude node factor for O1 (Schureman equations 75, 67).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -62,8 +95,19 @@ def f_O1(a):
     return (np.sin(I) * np.cos(0.5 * I) ** 2) / mean
 
 
-# Schureman equations 76, 68
-def f_J1(a):
+def f_J1(a: dict) -> float:
+    """Amplitude node factor for J1 (Schureman equations 76, 68).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -71,8 +115,19 @@ def f_J1(a):
     return np.sin(2 * I) / mean
 
 
-# Schureman equations 77, 69
-def f_OO1(a):
+def f_OO1(a: dict) -> float:
+    """Amplitude node factor for OO1 (Schureman equations 77, 69).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -80,8 +135,19 @@ def f_OO1(a):
     return np.sin(I) * np.sin(0.5 * I) ** 2 / mean
 
 
-# Schureman equations 78, 70
-def f_M2(a):
+def f_M2(a: dict) -> float:
+    """Amplitude node factor for M2 (Schureman equations 78, 70).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -89,9 +155,19 @@ def f_M2(a):
     return np.cos(0.5 * I) ** 4 / mean
 
 
-# Schureman equations 227, 226, 68
-# Should probably eventually include the derivations of the magic numbers (0.5023 etc).
-def f_K1(a):
+def f_K1(a: dict) -> float:
+    """Amplitude node factor for K1 (Schureman equations 227, 226, 68).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -103,9 +179,19 @@ def f_K1(a):
     ) ** (0.5) / mean
 
 
-# Schureman equations 215, 213, 204
-# It can be (and has been) confirmed that the exponent for R_a reads 1/2 via Schureman Table 7
-def f_L2(a):
+def f_L2(a: dict) -> float:
+    """Amplitude node factor for L2 (Schureman equations 215, 213, 204).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     P = d2r * a["P"].value
     I = d2r * a["I"].value
     R_a_inv = (
@@ -114,9 +200,19 @@ def f_L2(a):
     return f_M2(a) * R_a_inv
 
 
-# Schureman equations 235, 234, 71
-# Again, magic numbers
-def f_K2(a):
+def f_K2(a: dict) -> float:
+    """Amplitude node factor for K2 (Schureman equations 235, 234, 71).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     omega = d2r * a["omega"].value
     i = d2r * a["i"].value
     I = d2r * a["I"].value
@@ -128,8 +224,19 @@ def f_K2(a):
     ) ** (0.5) / mean
 
 
-# Schureman equations 206, 207, 195
-def f_M1(a):
+def f_M1(a: dict) -> float:
+    """Amplitude node factor for M1 (Schureman equations 206, 207, 195).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     P = d2r * a["P"].value
     I = d2r * a["I"].value
     Q_a_inv = (
@@ -140,44 +247,152 @@ def f_M1(a):
     return f_O1(a) * Q_a_inv
 
 
-# See e.g. Schureman equation 149
-def f_Modd(a, n):
+def f_Modd(a: dict, n: int) -> float:
+    """Amplitude node factor for odd M constituents (Schureman equation 149).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+    n : int
+        Species number of the constituent (e.g. 3 for M3).
+
+    Returns
+    -------
+    float
+        Dimensionless amplitude factor.
+    """
     return f_M2(a) ** (n / 2.0)
 
 
 # Node factors u, see Table 2 of Schureman.
 
 
-def u_zero(a):
+def u_zero(a: dict) -> float:
+    """Phase node correction equal to zero.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters (unused).
+
+    Returns
+    -------
+    float
+        Always ``0.0``.
+    """
     return 0.0
 
 
-def u_Mf(a):
+def u_Mf(a: dict) -> float:
+    """Phase node correction for Mf.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return -2.0 * a["xi"].value
 
 
-def u_O1(a):
+def u_O1(a: dict) -> float:
+    """Phase node correction for O1.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return 2.0 * a["xi"].value - a["nu"].value
 
 
-def u_J1(a):
+def u_J1(a: dict) -> float:
+    """Phase node correction for J1.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return -a["nu"].value
 
 
-def u_OO1(a):
+def u_OO1(a: dict) -> float:
+    """Phase node correction for OO1.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return -2.0 * a["xi"].value - a["nu"].value
 
 
-def u_M2(a):
+def u_M2(a: dict) -> float:
+    """Phase node correction for M2.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return 2.0 * a["xi"].value - 2.0 * a["nu"].value
 
 
-def u_K1(a):
+def u_K1(a: dict) -> float:
+    """Phase node correction for K1.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return -a["nup"].value
 
 
-# Schureman 214
-def u_L2(a):
+def u_L2(a: dict) -> float:
+    """Phase node correction for L2 (Schureman equation 214).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     I = d2r * a["I"].value
     P = d2r * a["P"].value
     R = r2d * np.arctan(
@@ -186,17 +401,54 @@ def u_L2(a):
     return 2.0 * a["xi"].value - 2.0 * a["nu"].value - R
 
 
-def u_K2(a):
+def u_K2(a: dict) -> float:
+    """Phase node correction for K2.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return -2.0 * a["nupp"].value
 
 
-# Schureman 202
-def u_M1(a):
+def u_M1(a: dict) -> float:
+    """Phase node correction for M1 (Schureman equation 202).
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     I = d2r * a["I"].value
     P = d2r * a["P"].value
     Q = r2d * np.arctan((5 * np.cos(I) - 1) / (7 * np.cos(I) + 1) * np.tan(P))
     return a["xi"].value - a["nu"].value + Q
 
 
-def u_Modd(a, n):
+def u_Modd(a: dict, n: int) -> float:
+    """Phase node correction for odd M constituents.
+
+    Parameters
+    ----------
+    a : dict
+        Astronomical parameters.
+    n : int
+        Species number of the constituent.
+
+    Returns
+    -------
+    float
+        Phase correction in degrees.
+    """
     return n / 2.0 * u_M2(a)

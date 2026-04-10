@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Apr 25 10:58:08 2021
+"""Tide model database management.
 
-@author: Maarten van Ormondt
+Provides :class:`TideModelDatabase` for discovering, caching, and
+downloading tidal model datasets (e.g. FES2014) from a local directory
+and/or an S3 bucket.
 """
 
 import os
@@ -16,16 +16,33 @@ from cht_tide.fes2014 import TideModelFes2014
 
 
 class TideModelDatabase:
-    """
-    The main Tide Model Database class
+    """Registry of available tide model datasets.
 
-    :param pth: Path name where bathymetry tiles will be cached.
-    :type pth: string
+    Reads dataset metadata from a local ``tide_models.tml`` index file,
+    optionally synchronising with an S3 bucket to discover new datasets.
+
+    Parameters
+    ----------
+    path : str, optional
+        Local directory where tide model datasets are stored.
+    s3_bucket : str, optional
+        S3 bucket name for online synchronisation.
+    s3_key : str, optional
+        S3 key prefix under which tide model data lives.
+    s3_region : str, optional
+        AWS region of the S3 bucket.
+    check_online : bool, optional
+        If ``True``, query S3 for new datasets on construction.
     """
 
     def __init__(
-        self, path=None, s3_bucket=None, s3_key=None, s3_region=None, check_online=False
-    ):
+        self,
+        path: str = None,
+        s3_bucket: str = None,
+        s3_key: str = None,
+        s3_region: str = None,
+        check_online: bool = False,
+    ) -> None:
         self.path = path
         self.dataset = []
         self.s3_client = None
@@ -36,9 +53,11 @@ class TideModelDatabase:
         if check_online:
             self.check_online_database()
 
-    def read(self):
-        """
-        Reads meta-data of all datasets in the database.
+    def read(self) -> None:
+        """Read metadata for all datasets listed in ``tide_models.tml``.
+
+        Skips datasets whose metadata file cannot be found. Populates
+        ``self.dataset`` with model instances.
         """
         if self.path is None:
             print("Path to tide model database not set !")
@@ -51,7 +70,7 @@ class TideModelDatabase:
         # Read in database
         tml_file = os.path.join(self.path, "tide_models.tml")
         if not os.path.exists(tml_file):
-            print("Warning! Tide model database file not found: " + tml_file)
+            print(f"Warning! Tide model database file not found: {tml_file}")
             return
 
         datasets = toml.load(tml_file)
@@ -72,9 +91,7 @@ class TideModelDatabase:
                 dataset_format = metadata["format"]
             else:
                 print(
-                    "Could not find metadata file for dataset "
-                    + name
-                    + " ! Skipping dataset."
+                    f"Could not find metadata file for dataset {name} ! Skipping dataset."
                 )
                 continue
 
@@ -85,64 +102,57 @@ class TideModelDatabase:
 
             self.dataset.append(model)
 
-    def check_online_database(self):
+    def check_online_database(self) -> None:
+        """Synchronise the local database with the S3 bucket.
+
+        Downloads ``tide_models.tml`` from S3 and adds any new datasets
+        (metadata only) to the local database, then re-reads the database.
+        """
         if self.s3_client is None:
             self.s3_client = boto3.client(
                 "s3", config=Config(signature_version=UNSIGNED)
             )
         if self.s3_bucket is None:
             return
-        # First download a copy of bathymetry.tml and call it bathymetry_s3.tml
         key = f"{self.s3_key}/tide_models.tml"
         filename = os.path.join(self.path, "tide_models_s3.tml")
         print("Updating tide models database ...")
         try:
             self.s3_client.download_file(
-                Bucket=self.s3_bucket,  # assign bucket name
-                Key=key,  # key is the file name
+                Bucket=self.s3_bucket,
+                Key=key,
                 Filename=filename,
-            )  # storage file path
+            )
         except Exception:
-            # Download failed
             print(
                 f"Failed to download {key} from {self.s3_bucket}. Database will not be updated."
             )
             return
 
-        # Read bathymetry_s3.tml
         short_name_list, long_name_list = self.dataset_names()
         datasets_s3 = toml.load(filename)
         tide_models_added = False
         added_names = []
-        # Loop through s3 datasets, and check whether they exist in the local database.
-        # If so, check if the metadata also exists. If not, make local folder and download the metadata.
-        # Additionally, check if available_tiles.nc in s3 and not in local database, download it.
         for d in datasets_s3["dataset"]:
-            # Get list of existing datasets
             s3_name = d["name"]
             if s3_name not in short_name_list:
-                # Dataset not in local database
                 print(f"Adding tide model {s3_name} to local database ...")
-                # Create folder and download metadata
                 path = os.path.join(self.path, s3_name)
                 os.makedirs(path, exist_ok=True)
                 key = f"{self.s3_key}/{s3_name}/metadata.tml"
                 filename = os.path.join(path, "metadata.tml")
-                # Download metadata
                 try:
                     self.s3_client.download_file(
-                        Bucket=self.s3_bucket,  # assign bucket name
-                        Key=key,  # key is the file name
+                        Bucket=self.s3_bucket,
+                        Key=key,
                         Filename=filename,
-                    )  # storage file path
+                    )
                 except Exception as e:
                     print(e)
                     print(f"Failed to download {key}. Skipping tide model.")
                     continue
-                # Necessary data has been downloaded
                 tide_models_added = True
                 added_names.append(s3_name)
-        # Write new local bathymetry.tml
         if tide_models_added:
             d = {}
             d["dataset"] = []
@@ -150,37 +160,40 @@ class TideModelDatabase:
                 d["dataset"].append({"name": name})
             for name in added_names:
                 d["dataset"].append({"name": name})
-            # Now write the new bathymetry.tml
             with open(os.path.join(self.path, "tide_models.tml"), "w") as tml:
                 toml.dump(d, tml)
-            # Read the database again
             self.dataset = []
             self.read()
-        # else:
-        #     print("No new tide models were added to the local database.")
 
-    def get_dataset(self, name):
+    def get_dataset(self, name: str):
+        """Retrieve a dataset by its short name.
+
+        Parameters
+        ----------
+        name : str
+            Short name of the dataset.
+
+        Returns
+        -------
+        TideModel or None
+            The matching dataset, or ``None`` if not found.
+        """
         for dataset in self.dataset:
             if dataset.name == name:
                 return dataset
         return None
 
-    def dataset_names(self):
+    def dataset_names(self) -> tuple:
+        """Return lists of short and long dataset names.
+
+        Returns
+        -------
+        tuple of (list of str, list of str)
+            ``(short_name_list, long_name_list)``.
+        """
         short_name_list = []
         long_name_list = []
         for dataset in self.dataset:
             short_name_list.append(dataset.name)
             long_name_list.append(dataset.long_name)
         return short_name_list, long_name_list
-
-
-# def dict2yaml(file_name, dct, sort_keys=False):
-#     yaml_string = yaml.dump(dct, sort_keys=sort_keys)
-#     file = open(file_name, "w")
-#     file.write(yaml_string)
-#     file.close()
-
-# def yaml2dict(file_name):
-#     file = open(file_name,"r")
-#     dct = yaml.load(file, Loader=yaml.FullLoader)
-#     return dct

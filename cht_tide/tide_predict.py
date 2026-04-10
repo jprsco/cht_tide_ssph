@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May 19 14:25:56 2021
+"""Tidal prediction convenience function.
 
-@author: ormondt
+Wraps :class:`~cht_tide.tide.Tide` to predict water levels from a
+constituent DataFrame using the NOAA standard constituent set.
 """
 
 import pandas as pd
@@ -11,13 +10,36 @@ import cht_tide.constituent as cons
 from cht_tide.tide import Tide
 
 
-def predict(data, times, format="np"):
+def predict(data: pd.DataFrame, times, format: str = "np"):
+    """Predict tidal water levels from harmonic constituents.
+
+    Maps constituent names in *data* (e.g. ``"MM"``, ``"MF"``) to the
+    corresponding NOAA objects, builds a :class:`~cht_tide.tide.Tide`
+    model, and evaluates it at *times*.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame indexed by constituent name with ``"amplitude"`` (metres)
+        and ``"phase"`` (degrees) columns.  Legacy integer-column DataFrames
+        are also accepted (first non-index column = amplitude, second = phase).
+    times : array-like of datetime
+        Times at which to evaluate the tidal prediction.
+    format : str, optional
+        Output format: ``"np"`` (default) returns a numpy array;
+        ``"dataframe"`` / ``"df"`` returns a :class:`pandas.DataFrame`
+        indexed by time.
+
+    Returns
+    -------
+    np.ndarray or pd.DataFrame
+        Predicted tidal heights in metres.
+    """
     all_constituents = [c for c in cons.noaa if c != cons._Z0]
     constituents = []
     amplitudes = []
     phases = []
     for name in data.index.to_list():
-        okay = False
         noaa_name = name
         if name == "MM":
             noaa_name = "Mm"
@@ -34,23 +56,15 @@ def predict(data, times, format="np"):
         for cnst in all_constituents:
             if cnst.name == noaa_name:
                 constituents.append(cnst)
-                # Check if amplitude is a column in the data
                 if "amplitude" in data.columns:
                     amplitudes.append(data.loc[name, "amplitude"])
                 else:
-                    # Assume it is the first non-index column
                     amplitudes.append(data.loc[name, 1])
                 if "phase" in data.columns:
                     phases.append(data.loc[name, "phase"])
                 else:
-                    # Assume it is the second non-index column
                     phases.append(data.loc[name, 2])
-                okay = True
                 continue
-        # if not okay:
-        #     print(
-        #         f"Constituent {name} not found in list of NOAA constituents ! Skipping ..."
-        #     )
 
     td = Tide(
         constituents=constituents,
@@ -60,7 +74,6 @@ def predict(data, times, format="np"):
     v = td.at(times)
 
     if format == "dataframe" or format == "df":
-        # Convert numpy array v to dataframe where index is time
         v = pd.DataFrame(v, index=times)
 
     return v

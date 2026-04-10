@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Apr 25 10:58:08 2021
+"""cht_tide — tidal harmonic analysis and prediction library.
 
-@author: ormondt
+Exposes the main public API: database access, model classes, prediction,
+and tide station lookups.
 """
 
 __version__ = "0.1.1"

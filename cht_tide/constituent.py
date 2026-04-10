@@ -1,27 +1,12 @@
-#   Copyright notice
-#   --------------------------------------------------------------------
-#   Copyright (C) 2020 Deltares
-#       Freek Scheel
-#
-#       freek.scheel@deltares.nl
-#
-#       P.O. Box 177
-#       2600 MH Delft
-#       The Netherlands
-#
-#   This library is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU Lesser General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This library is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this library.  If not, see <http://www.gnu.org/licenses/>.
-#   --------------------------------------------------------------------
+"""Tidal constituent definitions and the NOAA standard constituent set.
+
+Defines :class:`BaseConstituent` and :class:`CompoundConstituent` used to
+represent individual tidal frequencies and their nodal correction functions.
+The module-level ``noaa`` list contains the 37 NOAA standard constituents.
+"""
+
+# Copyright (C) 2020 Deltares — Freek Scheel <freek.scheel@deltares.nl>
+# GNU Lesser General Public License v3 or later.
 
 import operator as op
 import string
@@ -32,7 +17,24 @@ import numpy as np
 import cht_tide.nodal_corrections as nc
 
 
-class BaseConstituent(object):
+class BaseConstituent:
+    """A single tidal constituent defined by its Doodson (xdo) number.
+
+    Parameters
+    ----------
+    name : str
+        Short name of the constituent (e.g. ``"M2"``).
+    xdo : str, optional
+        Doodson number in letter-encoded xdo format.
+    coefficients : list of int, optional
+        Integer coefficients for the equilibrium argument (used when
+        *xdo* is not provided).
+    u : callable, optional
+        Node-factor phase correction function ``u(astro) -> float`` in degrees.
+    f : callable, optional
+        Node-factor amplitude correction function ``f(astro) -> float``.
+    """
+
     xdo_int = {
         "A": 1,
         "B": 2,
@@ -64,7 +66,7 @@ class BaseConstituent(object):
 
     int_xdo = {v: k for k, v in xdo_int.items()}
 
-    def __init__(self, name, xdo="", coefficients=[], u=nc.u_zero, f=nc.f_unity):
+    def __init__(self, name: str, xdo: str = "", coefficients: list = [], u=nc.u_zero, f=nc.f_unity) -> None:
         if xdo == "":
             self.coefficients = np.array(coefficients)
         else:
@@ -73,41 +75,143 @@ class BaseConstituent(object):
         self.u = u
         self.f = f
 
-    def xdo_to_coefficients(self, xdo):
+    def xdo_to_coefficients(self, xdo: str) -> list:
+        """Convert a letter-encoded xdo string to integer coefficients.
+
+        Parameters
+        ----------
+        xdo : str
+            Doodson xdo string.
+
+        Returns
+        -------
+        list of int
+            Integer coefficients.
+        """
         return [self.xdo_int[l.upper()] for l in xdo if l in string.ascii_letters]
 
-    def coefficients_to_xdo(self, coefficients):
+    def coefficients_to_xdo(self, coefficients: list) -> str:
+        """Convert integer coefficients to a letter-encoded xdo string.
+
+        Parameters
+        ----------
+        coefficients : list of int
+            Integer Doodson coefficients.
+
+        Returns
+        -------
+        str
+            xdo string.
+        """
         return "".join([self.int_xdo[c] for c in coefficients])
 
-    def V(self, astro):
+    def V(self, astro: dict) -> float:
+        """Compute the equilibrium argument V at given astronomical values.
+
+        Parameters
+        ----------
+        astro : dict
+            Astronomical parameters as returned by :func:`~cht_tide.astro.astro`.
+
+        Returns
+        -------
+        float
+            Equilibrium argument in degrees.
+        """
         return np.dot(self.coefficients, self.astro_values(astro))
 
-    def xdo(self):
+    def xdo(self) -> str:
+        """Return the xdo string for this constituent.
+
+        Returns
+        -------
+        str
+            xdo string.
+        """
         return self.coefficients_to_xdo(self.coefficients)
 
-    def speed(self, a):
+    def speed(self, a: dict) -> float:
+        """Compute the constituent speed in degrees per hour.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        float
+            Speed in degrees/hour.
+        """
         return np.dot(self.coefficients, self.astro_speeds(a))
 
-    def astro_xdo(self, a):
+    def astro_xdo(self, a: dict) -> list:
+        """Return the spanning astronomical parameters in xdo order.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        list
+            [T+h-s, s, h, p, N, pp, 90] AstronomicalParameter objects.
+        """
         return [a["T+h-s"], a["s"], a["h"], a["p"], a["N"], a["pp"], a["90"]]
 
-    def astro_speeds(self, a):
+    def astro_speeds(self, a: dict) -> np.ndarray:
+        """Return speeds of spanning astronomical parameters.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        np.ndarray
+            Array of speeds in degrees/hour.
+        """
         return np.array([each.speed for each in self.astro_xdo(a)])
 
-    def astro_values(self, a):
+    def astro_values(self, a: dict) -> np.ndarray:
+        """Return values of spanning astronomical parameters.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        np.ndarray
+            Array of values in degrees.
+        """
         return np.array([each.value for each in self.astro_xdo(a)])
 
-    # Consider two out of phase constituents which travel at the same speed to
-    # be identical
-    def __eq__(self, c):
+    def __eq__(self, c) -> bool:
+        # Consider two out of phase constituents which travel at the same speed
+        # to be identical.
         return np.all(self.coefficients[:-1] == c.coefficients[:-1])
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(tuple(self.coefficients[:-1]))
 
 
 class CompoundConstituent(BaseConstituent):
-    def __init__(self, members=[], **kwargs):
+    """A tidal constituent formed by linear combination of base constituents.
+
+    Parameters
+    ----------
+    members : list of tuple
+        Each element is ``(constituent, n)`` where *constituent* is a
+        :class:`BaseConstituent` and *n* is the integer multiplier.
+    **kwargs
+        Additional keyword arguments forwarded to :class:`BaseConstituent`.
+    """
+
+    def __init__(self, members: list = [], **kwargs) -> None:
         self.members = members
 
         if "u" not in kwargs:
@@ -119,16 +223,64 @@ class CompoundConstituent(BaseConstituent):
 
         self.coefficients = reduce(op.add, [c.coefficients * n for (c, n) in members])
 
-    def speed(self, a):
+    def speed(self, a: dict) -> float:
+        """Compute compound constituent speed.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        float
+            Speed in degrees/hour.
+        """
         return reduce(op.add, [n * c.speed(a) for (c, n) in self.members])
 
-    def V(self, a):
+    def V(self, a: dict) -> float:
+        """Compute compound constituent equilibrium argument.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        float
+            Equilibrium argument in degrees.
+        """
         return reduce(op.add, [n * c.V(a) for (c, n) in self.members])
 
-    def u(self, a):
+    def u(self, a: dict) -> float:
+        """Compute compound constituent node phase correction.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        float
+            Phase correction in degrees.
+        """
         return reduce(op.add, [n * c.u(a) for (c, n) in self.members])
 
-    def f(self, a):
+    def f(self, a: dict) -> float:
+        """Compute compound constituent node amplitude factor.
+
+        Parameters
+        ----------
+        a : dict
+            Astronomical parameters.
+
+        Returns
+        -------
+        float
+            Dimensionless amplitude factor.
+        """
         return reduce(op.mul, [c.f(a) ** abs(n) for (c, n) in self.members])
 
 
