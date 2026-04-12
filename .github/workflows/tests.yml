@@ -33,21 +33,17 @@ jobs:
         uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: cht_tide
+          python-version: ${{ matrix.python-version }}
           auto-update-conda: true
           channels: conda-forge
 
-      - name: Create environment
-        shell: bash -el {0}
-        run: |
-          conda create -n cht_tide python=${{ matrix.python-version }} -y
-
       - name: Install test dependencies
         run: |
-          conda run -n cht_tide pip install -e ".[tests]"
+          pip install -e ".[tests]"
 
       - name: Test with pytest
         run: |
-          conda run -n cht_tide pytest tests
+          pytest tests
 
       - name: Upload coverage report
         if: matrix.coverage == true
