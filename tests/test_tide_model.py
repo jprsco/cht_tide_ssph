@@ -27,7 +27,7 @@ def test_tide_model():
     gdf = mdl.get_data_on_points(gdf=gdf, constituents="all")
 
     # Create timeseries
-    times = pd.date_range(start="2023-01-01", end="2023-01-02", freq="10T")
+    times = pd.date_range(start="2023-01-01", end="2023-01-02", freq="10min")
 
     # Predict the tide
 

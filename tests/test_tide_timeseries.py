@@ -68,7 +68,7 @@ def test_timeseries_from_components():
     df.index.name = "constituent"
 
     # Create timeseries
-    times = pd.date_range(start="2023-01-01", end="2023-01-02", freq="10T")
+    times = pd.date_range(start="2023-01-01", end="2023-01-02", freq="10min")
 
     # Predict the tide
     v = predict(df, times)
@@ -103,7 +103,7 @@ def test_read_bca_and_predict_timeseries():
     sb.read_flow_boundary_points(bnd_file)
     sb.read_astro_boundary_conditions(bca_file)
 
-    times = pd.date_range(start="2023-01-01", end="2023-01-02", freq="10T")
+    times = pd.date_range(start="2023-01-01", end="2023-01-02", freq="10min")
 
     # Predict the tide
     v = predict(sb.flow_boundary_points[0].astro, times)

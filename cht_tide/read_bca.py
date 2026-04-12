@@ -45,7 +45,7 @@ class SfincsBoundary:
             bnd_file,
             index_col=False,
             header=None,
-            delim_whitespace=True,
+            sep=r"\s+",
             names=["x", "y"],
         )
 

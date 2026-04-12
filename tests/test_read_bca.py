@@ -117,4 +117,6 @@ def test_read_method(temp_ini_file):
     )
     expected_data.index.name = 0
 
-    pd.testing.assert_frame_equal(ini.section[0].data.astype(float), expected_data)
+    pd.testing.assert_frame_equal(
+        ini.section[0].data.astype(float), expected_data, check_index_type=False
+    )
