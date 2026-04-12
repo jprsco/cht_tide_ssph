@@ -41,4 +41,3 @@ Source = "https://github.com/Deltares/cht_tide"
 [tool.pytest.ini_options]
 addopts = "--cov cht_tide --cov-report xml"
 testpaths = ["tests"]
-
