@@ -189,7 +189,9 @@ class Keyword:
         Inline comment text.
     """
 
-    def __init__(self, name: str = None, value: str = None, comment: str = None) -> None:
+    def __init__(
+        self, name: str = None, value: str = None, comment: str = None
+    ) -> None:
         self.name = name
         self.value = value
         self.comment = comment

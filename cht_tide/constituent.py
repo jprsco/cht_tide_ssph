@@ -66,7 +66,14 @@ class BaseConstituent:
 
     int_xdo = {v: k for k, v in xdo_int.items()}
 
-    def __init__(self, name: str, xdo: str = "", coefficients: list = [], u=nc.u_zero, f=nc.f_unity) -> None:
+    def __init__(
+        self,
+        name: str,
+        xdo: str = "",
+        coefficients: list = [],
+        u=nc.u_zero,
+        f=nc.f_unity,
+    ) -> None:
         if xdo == "":
             self.coefficients = np.array(coefficients)
         else:

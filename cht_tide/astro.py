@@ -22,7 +22,13 @@ d2r, r2d = np.pi / 180.0, 180.0 / np.pi
 # analysis.
 
 
-def s2d(degrees: float, arcmins: float = 0, arcsecs: float = 0, mas: float = 0, muas: float = 0) -> float:
+def s2d(
+    degrees: float,
+    arcmins: float = 0,
+    arcsecs: float = 0,
+    mas: float = 0,
+    muas: float = 0,
+) -> float:
     """Convert a sexagesimal angle to decimal degrees.
 
     Parameters

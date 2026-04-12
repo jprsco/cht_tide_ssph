@@ -60,9 +60,7 @@ class TideStationsDataset:
         """Load dataset metadata from ``metadata.tml``."""
         metadata_path = os.path.join(self.path, "metadata.tml")
         if not os.path.exists(metadata_path):
-            print(
-                f"Warning! Tide stations metadata file not found: {metadata_path}"
-            )
+            print(f"Warning! Tide stations metadata file not found: {metadata_path}")
             return
         metadata = toml.load(metadata_path)
         if "longname" in metadata:
