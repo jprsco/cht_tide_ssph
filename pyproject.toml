@@ -17,7 +17,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
 requires-python = ">=3.10"
-dependencies = ["numpy", "scipy", "toml","pandas", "geopandas", "boto3", "cht_utils"]
+dependencies = ["numpy",
+    "scipy",
+	"toml",
+	"pandas",
+	"geopandas",
+	"boto3",
+	"cht_utils@ git+https://github.com/deltares-research/cht_utils.git"
+]
+
 dynamic = ["version"]
 
 [project.optional-dependencies]
