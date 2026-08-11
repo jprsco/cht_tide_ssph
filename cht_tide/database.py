@@ -41,6 +41,7 @@ class TideModelDatabase:
         s3_bucket: str = None,
         s3_key: str = None,
         s3_region: str = None,
+        s3_endpoint: str = None,
         check_online: bool = False,
     ) -> None:
         self.path = path
@@ -49,6 +50,8 @@ class TideModelDatabase:
         self.s3_bucket = s3_bucket
         self.s3_key = s3_key
         self.s3_region = s3_region
+        # Endpoint URL for S3-compatible stores (None = AWS S3)
+        self.s3_endpoint = s3_endpoint
         self.read()
         if check_online:
             self.check_online_database()
@@ -100,6 +103,9 @@ class TideModelDatabase:
             elif dataset_format.lower() == "tpxo_old":
                 pass
 
+            # Hand the store endpoint down to the model (its s3_bucket/s3_key
+            # come from metadata.tml; a metadata-provided endpoint wins)
+            model.s3_endpoint = getattr(model, "s3_endpoint", None) or self.s3_endpoint
             self.dataset.append(model)
 
     def check_online_database(self) -> None:
@@ -110,7 +116,9 @@ class TideModelDatabase:
         """
         if self.s3_client is None:
             self.s3_client = boto3.client(
-                "s3", config=Config(signature_version=UNSIGNED)
+                "s3",
+                endpoint_url=self.s3_endpoint or None,
+                config=Config(signature_version=UNSIGNED),
             )
         if self.s3_bucket is None:
             return

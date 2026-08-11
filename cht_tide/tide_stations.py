@@ -95,7 +95,11 @@ class TideStationsDataset:
             return
         if not self.check_file():
             print(f"Downloading {self.file} for tide stations set {self.name} ...")
-            s3_client = boto3.client("s3", config=Config(signature_version=UNSIGNED))
+            s3_client = boto3.client(
+                "s3",
+                endpoint_url=getattr(self, "s3_endpoint", None) or None,
+                config=Config(signature_version=UNSIGNED),
+            )
             s3_client.download_file(
                 self.s3_bucket,
                 f"{self.s3_key}/{self.file}",
@@ -367,6 +371,7 @@ class TideStationsDatabase:
         s3_bucket: str = None,
         s3_key: str = None,
         s3_region: str = None,
+        s3_endpoint: str = None,
         check_online: bool = False,
     ) -> None:
         self.path = path
@@ -375,6 +380,8 @@ class TideStationsDatabase:
         self.s3_bucket = s3_bucket
         self.s3_key = s3_key
         self.s3_region = s3_region
+        # Endpoint URL for S3-compatible stores (None = AWS S3)
+        self.s3_endpoint = s3_endpoint
         self.read()
         if check_online:
             self.check_online_database()
@@ -407,6 +414,9 @@ class TideStationsDatabase:
                 path = os.path.join(self.path, name)
 
             self.dataset[name] = TideStationsDataset(name, path)
+            self.dataset[name].s3_endpoint = (
+                getattr(self.dataset[name], "s3_endpoint", None) or self.s3_endpoint
+            )
 
     def check_online_database(self) -> None:
         """Synchronise the local database with the S3 bucket.
@@ -416,7 +426,9 @@ class TideStationsDatabase:
         """
         if self.s3_client is None:
             self.s3_client = boto3.client(
-                "s3", config=Config(signature_version=UNSIGNED)
+                "s3",
+                endpoint_url=self.s3_endpoint or None,
+                config=Config(signature_version=UNSIGNED),
             )
         if self.s3_bucket is None:
             return
